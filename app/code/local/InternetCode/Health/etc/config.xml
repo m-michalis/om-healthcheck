@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <InternetCode_Health>
+            <version>0.1.0</version>
+        </InternetCode_Health>
+    </modules>
+    <global>
+        <helpers>
+            <health>
+                <class>InternetCode_Health_Helper</class>
+            </health>
+        </helpers>
+    </global>
+    <frontend>
+        <routers>
+            <ic_health>
+                <use>standard</use>
+                <args>
+                    <frontName>ic_health</frontName>
+                    <module>InternetCode_Health</module>
+                </args>
+            </ic_health>
+        </routers>
+    </frontend>
+</config>
