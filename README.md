@@ -8,8 +8,6 @@ An endpoint to healthcheck Openmage
 - Check if OM has updates
 - Check if cache status is enabled
 
-I encourage you to check `app/code/local/InternetCode/Feed/Model/Feed.php`
-
 ## Installation
 
 ### Composer
