@@ -1,0 +1,159 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: e977b42ebee84072adb54aede93d9b58
+      name: InternetCode/Webservers
+  templates:
+    - uuid: 8911be1ca37f40e79d0c3c32ec01c8b4
+      template: 'InternetCode OpenMage Healthcheck'
+      name: 'InternetCode OpenMage Healthcheck'
+      description: 'https://github.com/m-michalis/om-healthcheck'
+      groups:
+        - name: InternetCode/Webservers
+      items:
+        - uuid: 7dd4bcd3e5ff4e58938e97501be38bf0
+          name: 'OpenMage Fetch Data'
+          type: SCRIPT
+          key: om_health.raw
+          delay: 5m
+          history: '0'
+          value_type: TEXT
+          trends: '0'
+          params: |
+            const data = [];
+            '{$OM_HEALTHCHECK_URLS}'.split(',').map(function (item) {
+                    const domain = item.trim().replace(/^(?:https?:\/\/)?/i, '').split('/')[0].split('?')[0].split('#')[0];
+                    try {
+                        const req = new HttpRequest();
+            			parsedData = JSON.parse(req.get(item.trim()));
+            			parsedData["healtcheck"] = 1;
+                        data.push({
+                            "{#DOMAIN}": domain,
+                            "domain": domain,
+            				"data": parsedData,
+                        })
+                    }catch (e){
+                        data.push({
+                            "{#DOMAIN}": domain,
+                            "domain": domain,
+                            "healthcheck": 0,
+            				"data": {
+            					"healthcheck": 0
+            				}
+                        }) 
+                    }
+                });
+            return JSON.stringify(data);
+      discovery_rules:
+        - uuid: 870f6c05eaa34d9cb6931ff79e76dde6
+          name: 'Healthcheck URL Discovery'
+          type: DEPENDENT
+          key: om_health.discovery
+          delay: '0'
+          item_prototypes:
+            - uuid: 394fc9e7bc784c67b5effc923582482c
+              name: '{#DOMAIN}: Cache Status'
+              type: DEPENDENT
+              key: 'om_health.cache_status[{#DOMAIN}]'
+              delay: '0'
+              history: 1d
+              value_type: TEXT
+              trends: '0'
+              description: 'Show disabled cache tags.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.cache_status
+              master_item:
+                key: 'om_health.data[{#DOMAIN}]'
+              tags:
+                - tag: component
+                  value: health
+              trigger_prototypes:
+                - uuid: 1635aaf8e39e4105ba7ca7bc86ade932
+                  expression: 'last(/InternetCode OpenMage Healthcheck/om_health.cache_status[{#DOMAIN}])<>""'
+                  name: '{#DOMAIN}: Has disabled cache types'
+                  priority: INFO
+            - uuid: f5b82e9eb79e41559a04bdbabd459761
+              name: '{#DOMAIN}: Healthcheck Data'
+              type: DEPENDENT
+              key: 'om_health.data[{#DOMAIN}]'
+              delay: '0'
+              history: 1d
+              value_type: TEXT
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.domain == "{#DOMAIN}")].data.first()'
+              master_item:
+                key: om_health.raw
+              tags:
+                - tag: component
+                  value: health
+              trigger_prototypes:
+                - uuid: 2cc251e7a12942a49c194caa30e18745
+                  expression: 'jsonpath(last(/InternetCode OpenMage Healthcheck/om_health.data[{#DOMAIN}]),"$.healthcheck")=0'
+                  name: '{#DOMAIN}: Healthcheck Unavailable'
+                  priority: HIGH
+                  tags:
+                    - tag: om-healthcheck
+                      value: status
+                - uuid: 31b4bbd2bc564c03bbcb538fc5cd11dc
+                  expression: |
+                    jsonpath(last(/InternetCode OpenMage Healthcheck/om_health.data[{#DOMAIN}]),"$.current_version")<>
+                    jsonpath(last(/InternetCode OpenMage Healthcheck/om_health.data[{#DOMAIN}]),"$.latest_version")
+                  name: '{#DOMAIN}: OpenMage needs update'
+                  priority: INFO
+                  tags:
+                    - tag: om-healthcheck
+                      value: version
+            - uuid: 8a5b8cae6391447590bcaa74dfa20ad3
+              name: '{#DOMAIN}: AOE Cron Scheduler'
+              type: DEPENDENT
+              key: 'om_health.scheduler_status[{#DOMAIN}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              description: 'How many minutes since last heartbeat'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.aoe_cron_scheduler
+              master_item:
+                key: 'om_health.data[{#DOMAIN}]'
+              tags:
+                - tag: component
+                  value: health
+              trigger_prototypes:
+                - uuid: be5c87d763144dd796569ad76846cc7c
+                  expression: 'last(/InternetCode OpenMage Healthcheck/om_health.scheduler_status[{#DOMAIN}])>5'
+                  correlation_mode: TAG_VALUE
+                  correlation_tag: om-healthcheck
+                  name: '{#DOMAIN}: Last heartbeat is older than 5 minutes.'
+                  opdata: 'Last was {ITEM.LASTVALUE1} minutes ago'
+                  priority: WARNING
+                  tags:
+                    - tag: om-healthcheck
+                      value: cron
+                - uuid: 4884bc77c9f546e1b7b730a4e45a9734
+                  expression: 'last(/InternetCode OpenMage Healthcheck/om_health.scheduler_status[{#DOMAIN}])>60'
+                  correlation_mode: TAG_VALUE
+                  correlation_tag: om-health
+                  name: '{#DOMAIN}: Last heartbeat is older than one hour.'
+                  opdata: 'Last was {ITEM.LASTVALUE1} minutes ago'
+                  priority: HIGH
+                  tags:
+                    - tag: om-health
+                      value: cron
+          master_item:
+            key: om_health.raw
+      tags:
+        - tag: application
+          value: openmage
+        - tag: component
+          value: health
+      macros:
+        - macro: '{$OM_HEALTHCHECK_URLS}'
+          value: '<comma_separated_urls>'
+          description: 'Enter comma separated urls. Example https://example.com/ic_health/check'
