@@ -2,7 +2,7 @@
   "name": "m-michalis/om-healthcheck",
   "type": "magento-module",
   "license": "GPL-3.0",
-  "version": "v0.1.1",
+  "version": "v0.1.2",
   "homepage": "https://github.com/m-michalis/om-healthcheck",
   "description":"Health check for OpenMage",
   "keywords": [

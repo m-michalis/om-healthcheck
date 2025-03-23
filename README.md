@@ -26,6 +26,45 @@ An endpoint to healthcheck Openmage
 ### Start with
 `https://example.com/ic_health/check`
 
+#### CRON
+item:
+- Name: `{#DOMAIN}: Cron last heartbeat`
+- Key: `om_health.cron_heartbeat[{#DOMAIN}]`
+
+trigger information:
+```
+last(/InternetCode OpenMage Healthcheck/om_health.cron_heartbeat[{#DOMAIN}])>5
+```
+
+trigger high:
+```
+last(/InternetCode OpenMage Healthcheck/om_health.cron_heartbeat[{#DOMAIN}])>20
+```
+
+trigger CRITICAL:
+```
+last(/InternetCode OpenMage Healthcheck/om_health.cron_heartbeat[{#DOMAIN}])<0
+```
+
+#### version
+trigger information:
+```
+jsonpath(last(/InternetCode OpenMage Healthcheck/om_health.data[{#DOMAIN}]),"$.current_version")!=
+jsonpath(last(/InternetCode OpenMage Healthcheck/om_health.data[{#DOMAIN}]),"$.latest_version")
+```
+
+
+#### cache
+item:
+- Name: `{#DOMAIN}: Cache status`
+- Key: `om_health.cache_status[{#DOMAIN}]`
+
+trigger information:
+```
+last(/InternetCode OpenMage Healthcheck/om_health.cache_status[{#DOMAIN}]) != ''
+```
+
+
 ## Compatibility (tested with)
 - OpenMage 20.0.x
 - MariaDB 11.4
